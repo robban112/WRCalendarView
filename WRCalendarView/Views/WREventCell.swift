@@ -11,7 +11,9 @@ import UIKit
 class WREventCell: UICollectionViewCell {
     @IBOutlet weak var borderView: UIView!
     @IBOutlet weak var titleLabel: UILabel!
-
+    
+    var contentColor: UIColor = UIColor.blue
+    
     override func awakeFromNib() {
         super.awakeFromNib()
         
@@ -22,15 +24,15 @@ class WREventCell: UICollectionViewCell {
         
         updateColors()
     }
-
+    
     override var isSelected: Bool {
         didSet {
             if isSelected && isSelected != oldValue {
                 UIView.animate(withDuration: TimeInterval(0.2), animations: { [unowned self] in
                     self.transform = CGAffineTransform.init(scaleX: 1.025, y: 1.025)
                     self.layer.shadowOpacity = 0.2
-                }, completion: { [unowned self] _ in
-                    self.transform = CGAffineTransform.identity
+                    }, completion: { [unowned self] _ in
+                        self.transform = CGAffineTransform.identity
                 })
             } else if isSelected {
                 layer.shadowOpacity = 0.2
@@ -45,18 +47,20 @@ class WREventCell: UICollectionViewCell {
         didSet {
             if let event = event {
                 titleLabel.text = event.title
+                contentColor = event.color
+                updateColors()
             }
         }
     }
     
     func updateColors() {
         contentView.backgroundColor = backgroundColorHighlighted(isSelected)
-        borderView.backgroundColor = borderColor()
-        titleLabel.textColor = textColorHighlighted(isSelected)
+        //borderView.backgroundColor = borderColor()
+        //titleLabel.textColor = textColorHighlighted(isSelected)
     }
     
     func backgroundColorHighlighted(_ selected: Bool) -> UIColor {
-        return selected ? UIColor(hexString: "35b1f1")! : UIColor(hexString: "35b1f1")!.withAlphaComponent(0.1)
+        return selected ? contentColor.withAlphaComponent(0.7) : contentColor.withAlphaComponent(0.4)
     }
     
     func textColorHighlighted(_ selected: Bool) -> UIColor {
@@ -67,3 +71,4 @@ class WREventCell: UICollectionViewCell {
         return self.backgroundColorHighlighted(false).withAlphaComponent(1.0)
     }
 }
+
