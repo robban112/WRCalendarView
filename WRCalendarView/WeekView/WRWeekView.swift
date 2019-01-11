@@ -27,8 +27,8 @@ public class WRWeekView: UIView {
     var currentPage: Int!
     var loading = false
     var isFirst = true
-    var daysToShow: Int = 0
-    var daysToShowOnScreen: Int = 0
+    public var daysToShow: Int = 0
+    public var daysToShowOnScreen: Int = 0
     public var calendarDate: Date!
     var events = [WREvent]()
     var eventBySection = [String: [WREvent]]()
@@ -53,6 +53,7 @@ public class WRWeekView: UIView {
     }
     
     func setup() {
+        
         dateFormatter.dateFormat = "yyyyMMdd"
         dateFormatter.timeZone = TimeZone.current
         
@@ -75,10 +76,12 @@ public class WRWeekView: UIView {
         addConstraints(NSLayoutConstraint.constraints(withVisualFormat: "H:|[collectionView]|", options: [], metrics: nil, views: views))
         
         registerViewClasses()
-        
         let tapGesture = UITapGestureRecognizer(target: self, action: #selector(tapHandler(_:)))
+        let doubleTapGesture = UITapGestureRecognizer(target: self, action: #selector(doubleTapHandler(_:)))
+        doubleTapGesture.numberOfTapsRequired = 2
         tapGesture.cancelsTouchesInView = false
         addGestureRecognizer(tapGesture)
+        addGestureRecognizer(doubleTapGesture)
     }
     
     func registerViewClasses() {
@@ -123,6 +126,7 @@ public class WRWeekView: UIView {
     }
     
     @objc func tapHandler(_ recognizer: UITapGestureRecognizer) {
+        
         let point = recognizer.location(in: self)
         
         var components = Calendar.current.dateComponents([.year, .month, .day, .hour, .minute], from: getDateForX(point.x))
@@ -131,6 +135,17 @@ public class WRWeekView: UIView {
         components.minute = minute
         
         delegate?.tap(date: Calendar.current.date(from: components)!)
+    }
+    
+    @objc func doubleTapHandler(_ recognizer: UITapGestureRecognizer) {
+        let point = recognizer.location(in: self)
+        if calendarType == .week {
+            setCalendarDate(getDateForX(point.x))
+            calendarType = .day
+        } else {
+            setCalendarDate(Date())
+            calendarType = .week
+        }
     }
     
     // MARK: - public actions
@@ -203,6 +218,21 @@ public class WRWeekView: UIView {
             daysToShowOnScreen = 7
             let weekComponent = Calendar.current.dateComponents([.yearForWeekOfYear, .weekOfYear], from: calendarDate)
             startDate = Calendar.current.date(from: weekComponent)
+        case .twoDays:
+            daysToShowOnScreen = 2
+            startDate = calendarDate
+        case .threeDays:
+            daysToShowOnScreen = 3
+            startDate = calendarDate
+        case .fourDays:
+            daysToShowOnScreen = 4
+            startDate = calendarDate
+        case .fiveDays:
+            daysToShowOnScreen = 5
+            startDate = calendarDate
+        case .sixDays:
+            daysToShowOnScreen = 6
+            startDate = calendarDate
         case .day:
             daysToShowOnScreen = 1
             startDate = calendarDate
@@ -258,6 +288,7 @@ public class WRWeekView: UIView {
         
         delegate?.view(startDate: flowLayout.dateForColumnHeader(at: IndexPath(row: 0, section: (currentPage - 1) * daysToShowOnScreen)),
                        interval: daysToShowOnScreen)
+        calendarDate = flowLayout.dateForColumnHeader(at: IndexPath(row: 0, section: (currentPage - 1) * daysToShowOnScreen))
     }
     
     // directionalLockEnabled 이 제대로 작동안해서 직접 막아야 함

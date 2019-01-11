@@ -34,6 +34,11 @@ public enum ReuseIdentifiers {
 public enum CalendarType {
     case week
     case day
+    case twoDays
+    case threeDays
+    case fourDays
+    case fiveDays
+    case sixDays
 }
 
 public enum HourGridDivision: Int {

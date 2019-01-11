@@ -17,7 +17,7 @@ class WRColumnHeader: UICollectionReusableView {
     
     override func awakeFromNib() {
         super.awakeFromNib()
-//        dateFormatter.locale = Locale(identifier: "en_US")
+        dateFormatter.locale = Locale(identifier: "sv_SE")
     }
     
     var date: Date? {
