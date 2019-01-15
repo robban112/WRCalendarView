@@ -46,6 +46,7 @@ class WREventCell: UICollectionViewCell {
     var event: WREvent? {
         didSet {
             if let event = event {
+                titleLabel.font = UIFont(name: "Montserrat-Light", size: 11)
                 titleLabel.text = event.title
                 contentColor = event.color
                 updateColors()
@@ -60,7 +61,7 @@ class WREventCell: UICollectionViewCell {
     }
     
     func backgroundColorHighlighted(_ selected: Bool) -> UIColor {
-        return selected ? contentColor.withAlphaComponent(0.7) : contentColor.withAlphaComponent(0.4)
+        return selected ? contentColor.withAlphaComponent(0.9) : contentColor.withAlphaComponent(0.6)
     }
     
     func textColorHighlighted(_ selected: Bool) -> UIColor {
