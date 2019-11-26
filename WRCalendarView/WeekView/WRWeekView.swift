@@ -240,8 +240,8 @@ public class WRWeekView: UIView {
         
         currentPage = Int(pageCount / 2) + 1
         daysToShow = daysToShowOnScreen * pageCount
-        initDate = startDate - (daysToShowOnScreen * (currentPage - 1) - 1).days
-        
+        initDate = startDate - (daysToShowOnScreen * (currentPage - 1)).days
+
         DispatchQueue.main.async { [unowned self] in
             self.layoutSubviews()
             self.forceReload(false)
