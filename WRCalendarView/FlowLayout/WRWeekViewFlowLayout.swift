@@ -90,7 +90,7 @@ class WRWeekViewFlowLayout: UICollectionViewFlowLayout {
         hourHeight = 30
         rowHeaderWidth = 50
         columnHeaderHeight = 50
-        hourGridDivisionValue = .minutes_20
+        hourGridDivisionValue = .minutes_30
         
         initializeMinuteTick()
     }
@@ -384,7 +384,7 @@ class WRWeekViewFlowLayout: UICollectionViewFlowLayout {
                                                                                           withItemCache: horizontalGridlineAttributes)
             let horizontalGridlineMinY = nearbyint(calendarStartY + (divisionHeight * CGFloat(division)) - (gridThickness / 2.0))
             attributes.frame = CGRect(x: calendarStartX, y: horizontalGridlineMinY, width: gridlineWidth, height: gridThickness)
-            attributes.alpha = 0.3
+            attributes.alpha = 0.0
             attributes.zIndex = zIndexForElementKind(DecorationViewKinds.horizontalGridline)
             
             _gridlineIndex += 1

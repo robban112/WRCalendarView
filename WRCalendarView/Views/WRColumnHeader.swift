@@ -33,14 +33,7 @@ class WRColumnHeader: UICollectionReusableView {
                     dayLbl.textColor = UIColor(hexString: "1398f2")
                     backgroundColor = UIColor(hexString: "f5f8fd")
                 } else {
-                    switch weekday {
-                    case 0: // sunday
-                        dayLbl.textColor = UIColor(hexString: "fe4646")
-                    case 6:
-                        dayLbl.textColor = UIColor(hexString: "3573ff")
-                    default:
-                        dayLbl.textColor = UIColor(hexString: "aaaaaa")
-                    }
+                    dayLbl.textColor = UIColor(hexString: "aaaaaa")
                     backgroundColor = UIColor.white
                 }
             }
