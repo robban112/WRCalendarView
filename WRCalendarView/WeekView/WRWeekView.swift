@@ -143,7 +143,7 @@ public class WRWeekView: UIView {
             setCalendarDate(getDateForX(point.x))
             calendarType = .day
         } else {
-            setCalendarDate(Date())
+            //setCalendarDate(Date())
             calendarType = .week
         }
     }
@@ -352,7 +352,7 @@ extension WRWeekView: UICollectionViewDelegate, UICollectionViewDataSource {
         } else {
             return 0
         }
-    } 
+    }
     
     public func collectionView(_ collectionView: UICollectionView, cellForItemAt indexPath: IndexPath) -> UICollectionViewCell {
         let date = flowLayout.dateForColumnHeader(at: indexPath)

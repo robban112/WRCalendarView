@@ -305,7 +305,9 @@ class WRWeekViewFlowLayout: UICollectionViewFlowLayout {
             sectionItemAttributes.append(attributes)
         }
         
-        adjustItemsForOverlap(sectionItemAttributes, inSection: section, sectionMinX: sectionX)
+        columnBasedLayout(sectionItemAttributes, inSection: section, sectionMinX: sectionX)
+        //adjustItemsForOverlap(sectionItemAttributes, inSection: section, sectionMinX: sectionX)
+        //dummySetAttr(sectionItemAttributes, inSection: section, sectionMinX: sectionX)
     }
     
     func layoutTodayBackgroundAttributes(section: Int, sectionX: CGFloat, calendarStartY: CGFloat, sectionHeight: CGFloat) {
@@ -478,8 +480,276 @@ class WRWeekViewFlowLayout: UICollectionViewFlowLayout {
         }
     }
     
+    func overlappingItems(for item: UICollectionViewLayoutAttributes, in items: [UICollectionViewLayoutAttributes], overlaps: Bool = true) -> [UICollectionViewLayoutAttributes]{
+            // Find the other items that overlap with this item
+            var overlappingItems = [UICollectionViewLayoutAttributes]()
+            let itemFrame = item.frame
+            
+            overlappingItems.append(contentsOf: items.filter {
+                if $0 != item {
+                    return itemFrame.intersects($0.frame) == overlaps
+                } else {
+                    return false == overlaps
+                }
+            })
+            return overlappingItems
+    }
+    
+    func nonOverlappingItems(for item: UICollectionViewLayoutAttributes, in items: [UICollectionViewLayoutAttributes]) -> [UICollectionViewLayoutAttributes] {
+        
+        return items.filter { (layoutAttr) -> Bool in
+            return !layoutAttr.frame.intersects(item.frame)
+        }
+    }
+        
+        
+        func buildMatrixGrouped(sectionItemAttributes: [UICollectionViewLayoutAttributes]) -> [[UICollectionViewLayoutAttributes]] {
+            var matrixGrouped: [[UICollectionViewLayoutAttributes]] = []
+            
+            //Go through each item and group every event colliding with any in group
+            for itemAttributes in sectionItemAttributes {
+                var hasCollision = false
+                var collidesWith: [Int] = []
+                for (index, groupedItemAttributes) in matrixGrouped.enumerated() {
+                    let overlaps = overlappingItems(for: itemAttributes, in: groupedItemAttributes)
+                    if overlaps.count > 0 {
+                        hasCollision = true
+                        collidesWith.append(index)
+                        //matrixGrouped[index].append(itemAttributes)
+                    }
+                }
+                if collidesWith.count > 1 {
+                    var grouped: [UICollectionViewLayoutAttributes] = []
+                    var accIndex = 0
+                    for collisionIndex in collidesWith {
+                        grouped = grouped + matrixGrouped[collisionIndex + accIndex]
+                        //grouped.append(contentsOf: matrixGrouped[collisionIndex])
+                        matrixGrouped.remove(at: (collisionIndex + accIndex))
+                        accIndex += -1
+                    }
+                    matrixGrouped.append(grouped)
+                } else if collidesWith.count == 1 {
+                    matrixGrouped[collidesWith[0]].append(itemAttributes)
+                } else if !hasCollision {
+                    matrixGrouped.append([itemAttributes])
+                }
+            }
+            
+            //TEST
+            for (index, i) in sectionItemAttributes.enumerated() {
+                var exists = false
+                var iindex = 0
+                for group in matrixGrouped {
+                    for p in group {
+                        if i == p {
+                            exists = true
+                            iindex = index
+                        }
+                    }
+                }
+                if !exists {
+                    
+                    print("DOESNT EXIST OMG")
+                    let item = sectionItemAttributes[iindex]
+                    var shouldBreak = false
+                    for (index, group) in matrixGrouped.enumerated() {
+                        if shouldBreak { break }
+                        for otherItem in group {
+                            if shouldBreak { break }
+                            if item.frame.intersects(otherItem.frame) {
+                                print("BUT IT INTERSECTS HERE!")
+                                matrixGrouped[index].append(item)
+                                shouldBreak = true
+                            }
+                        }
+                    }
+                }
+            }
+            
+            return matrixGrouped
+        }
+    
+        func columnBasedLayout(_ sectionItemAttributes: [UICollectionViewLayoutAttributes], inSection: Int, sectionMinX: CGFloat) {
+            
+            func canBePlacedBeneath(item: UICollectionViewLayoutAttributes, groupedEvents: [[UICollectionViewLayoutAttributes]]) -> (Bool, Int) {
+                for (index, group) in groupedEvents.enumerated() {
+                    let lastItem = group.last!
+                    if lastItem.frame.maxY <= item.frame.minY {
+                        return (true, index)
+                    }
+                }
+                return (false, 0)
+            }
+            
+            func canExtendToColumn(item: UICollectionViewLayoutAttributes, column: [UICollectionViewLayoutAttributes]) -> Bool {
+                let start = item.frame.minY
+                let end = item.frame.maxY
+                
+                if column.count == 0 { return true }
+                if end <= column[0].frame.minY { return true }
+                if start >= column.last!.frame.maxY { return true }
+                
+                return false
+            }
+            
+            func extendGroupedEvents(groupedEvents: [[UICollectionViewLayoutAttributes]], width: CGFloat) {
+                for (index, column) in groupedEvents.enumerated() {
+                    for layoutAttr in column {
+                        var adjustWidthMultiplier: CGFloat = 1.0
+                        for followingColumnsIndex in index+1..<groupedEvents.count {
+                            if canExtendToColumn(item: layoutAttr, column: groupedEvents[followingColumnsIndex]) {
+                                adjustWidthMultiplier += 1
+                                
+                            } else {
+                                break
+                            }
+                        }
+                        layoutAttr.frame.size.width = width * adjustWidthMultiplier
+                    }
+                }
+            }
+            
+            var groupedEvents = [[UICollectionViewLayoutAttributes]]()
+            var occupiedYSpace = [[(CGFloat, CGFloat)]]()       //tuple's of start + end of events
+            if sectionItemAttributes.count == 0 { return }
+            let firstItem = sectionItemAttributes[0]
+            groupedEvents.append([firstItem])
+            occupiedYSpace.append([(firstItem.frame.minY, firstItem.frame.maxY)])
+            
+            for index in 1..<sectionItemAttributes.count {
+                let item = sectionItemAttributes[index]
+                let (placedBeneath, index) = canBePlacedBeneath(item: item, groupedEvents: groupedEvents)
+                if placedBeneath {
+                    groupedEvents[index].append(item)
+                } else {
+                    groupedEvents.append([item])
+                }
+            }
+            
+            let columnWidth = sectionWidth / CGFloat(groupedEvents.count)
+            var adjust = 0
+            
+            for column in groupedEvents {
+                for layoutAttr in column {
+                    layoutAttr.frame.size.width = columnWidth
+                    layoutAttr.frame.origin.x = sectionMinX + (CGFloat(adjust) * columnWidth)
+                }
+                adjust += 1
+            }
+            
+            extendGroupedEvents(groupedEvents: groupedEvents, width: columnWidth)
+        }
+    
+    
+        func dummySetAttr(_ sectionItemAttributes: [UICollectionViewLayoutAttributes], inSection: Int, sectionMinX: CGFloat) {
+            var matrixNonGrouped = [[UICollectionViewLayoutAttributes]]()
+            var isAdjusted =  [ UICollectionViewLayoutAttributes : Bool ]()
+            
+            for item in sectionItemAttributes {
+                if let isAdjusted = isAdjusted[item], isAdjusted {
+                    continue
+                }
+                //let nonOverlapping = nonOverlappingItems(for: item, in: sectionItemAttributes)
+                let overlapping = overlappingItems(for: item, in: sectionItemAttributes)
+                matrixNonGrouped.append(overlapping)
+                overlapping.forEach { (layoutAttr) in
+                    isAdjusted[layoutAttr] = true
+                }
+            }
+            let divisionWidth = sectionWidth / CGFloat(matrixNonGrouped.count)
+            var adjust = 0
+            for group in matrixNonGrouped {
+                for layoutAttr in group {
+                    layoutAttr.frame.size.width = divisionWidth
+                    layoutAttr.frame.origin.x = sectionMinX + (CGFloat(adjust) * divisionWidth)
+
+                }
+                adjust += 1
+            }
+        }
+        
+        func dummySetAttr2(_ sectionItemAttributes: [UICollectionViewLayoutAttributes], inSection: Int, sectionMinX: CGFloat) {
+//            var isAdjusted = [ UICollectionViewLayoutAttributes : Bool ]()
+//            for item in sectionItemAttributes {
+//                let overlaps = overlappingItems(for: item, in: sectionItemAttributes)
+//                var divisionWidth = sectionWidth / CGFloat(overlaps.count)
+//                var adjust = 1
+//                var maxAdjust = overlaps.count
+//                item.frame.size.width = divisionWidth
+//                for overlap in overlaps {
+//
+//                }
+//            }
+            var adjust = 0
+            for item in sectionItemAttributes {
+                let divisionWidth = sectionWidth / CGFloat(sectionItemAttributes.count)
+                item.frame.size.width = divisionWidth
+                item.frame.origin.x = sectionMinX + (CGFloat(adjust) * divisionWidth)
+                adjust += 1
+            }
+        }
+        
+        func adjustItemsForOverlapNew(_ sectionItemAttributes: [UICollectionViewLayoutAttributes], inSection: Int, sectionMinX: CGFloat) {
+            var adjustedAttributes = Set<UICollectionViewLayoutAttributes>()
+            var sectionZ = minCellZ
+            
+            // Find the other items that overlap with this item
+            let matrixGrouped = buildMatrixGrouped(sectionItemAttributes: sectionItemAttributes)
+            
+            for group in matrixGrouped {
+                // If there's items overlapping, we need to adjust them
+                if group.count == 1 {
+                    continue
+                }
+                
+                let divisions = group.count
+                
+                // Adjust the items to have a width of the section size divided by the number of divisions needed
+                let divisionWidth = nearbyint(sectionWidth / CGFloat(divisions))
+                var dividedAttributes = [UICollectionViewLayoutAttributes]()
+                var adjustments = 1
+                for itemAttribute in group {
+                    let width = divisionWidth - cellMargin.left - cellMargin.right
+                    itemAttribute.frame.size.width = width
+                    itemAttribute.frame.origin.x = sectionMinX + ((divisionWidth * CGFloat(adjustments)) + cellMargin.left)
+                    adjustments += 1
+                    
+                }
+//                for divisionAttributes in group {
+//
+//
+//                    let itemWidth = divisionWidth - cellMargin.left - cellMargin.right
+//
+//                    var divisionAttributesFrame = divisionAttributes.frame
+//                    divisionAttributesFrame.origin.x = sectionMinX + cellMargin.left
+//                    divisionAttributesFrame.size.width = itemWidth
+//
+//                    // Horizontal Layout
+//                    var adjustments = 1
+//                    for dividedItemAttributes in dividedAttributes {
+//                        if dividedItemAttributes.frame.intersects(divisionAttributesFrame) {
+//
+//                            divisionAttributesFrame.origin.x = sectionMinX + ((divisionWidth * CGFloat(adjustments)) + cellMargin.left)
+//                            adjustments += 1
+//                        }
+//                    }
+//
+//                    // Stacking (lower items stack above higher items, since the title is at the top)
+//                    divisionAttributes.zIndex = sectionZ
+//                    sectionZ += 1
+//
+//                    divisionAttributes.frame = divisionAttributesFrame
+//                    dividedAttributes.append(divisionAttributes)
+//                    adjustedAttributes.insert(divisionAttributes)
+//
+//                 }
+                
+            }
+        }
+    
     func adjustItemsForOverlap(_ sectionItemAttributes: [UICollectionViewLayoutAttributes], inSection: Int, sectionMinX: CGFloat) {
         var adjustedAttributes = Set<UICollectionViewLayoutAttributes>()
+        var copySectionItemAttributes: [UICollectionViewLayoutAttributes] = sectionItemAttributes.map { $0.copy() as! UICollectionViewLayoutAttributes }
         var sectionZ = minCellZ
         
         for itemAttributes in sectionItemAttributes {
@@ -565,7 +835,27 @@ class WRWeekViewFlowLayout: UICollectionViewFlowLayout {
                     }
                  }
             }
+            if numOverlaps(sectionItemAttributes: sectionItemAttributes) > 2 {
+                dummySetAttr(copySectionItemAttributes, inSection: inSection, sectionMinX: sectionMinX)
+            }
         }
+        
+        
+    }
+    
+    func numOverlaps(sectionItemAttributes: [UICollectionViewLayoutAttributes]) -> Int {
+        var overlaps = 0
+        for item in sectionItemAttributes {
+            for otherItem in sectionItemAttributes {
+                if item != otherItem {
+                    if item.frame.intersects(otherItem.frame) {
+                        overlaps += 1
+                    }
+                }
+            }
+        }
+        
+        return overlaps
     }
     
     func invalidateLayoutCache() {
